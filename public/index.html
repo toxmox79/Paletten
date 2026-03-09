@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palettenerfassung Online</title>
+    <title>Palettenerfassung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { padding: 20px; }
@@ -15,8 +15,8 @@
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1">Palettenerfassung</span>
             <div>
-                <button class="btn btn-secondary me-2" data-bs-toggle="modal" data-bs-target="#settingsModal">Einstellungen</button>
-                <a href="/logout" class="btn btn-outline-danger">Logout</a>
+                <button class="btn btn-secondary me-2" id="settingsBtn" data-bs-toggle="modal" data-bs-target="#settingsModal">Einstellungen</button>
+                <button class="btn btn-secondary" id="logoutBtn">Abmelden</button>
             </div>
         </div>
     </nav>
@@ -52,7 +52,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="row">
+                        <div class="row mt-3">
                             <div class="col-md-6">
                                 <label for="lieferscheinnr">Lieferscheinnr</label>
                                 <input type="text" class="form-control" id="lieferscheinnr" required>
@@ -66,7 +66,7 @@
                                 <input type="number" class="form-control" id="abgegeben" min="0" required>
                             </div>
                         </div>
-                        <div class="row">
+                        <div class="row mt-3">
                             <div class="col-md-6">
                                 <label for="notizen">Notizen</label>
                                 <textarea class="form-control" id="notizen"></textarea>
@@ -82,14 +82,14 @@
                     </form>
                 </div>
             </div>
-            <div class="panel panel-default">
+            <div class="panel panel-default mt-4">
                 <div class="panel-heading">
                     <h3 class="panel-title">Einträge</h3>
                 </div>
                 <div class="panel-body">
-                    <button id="exportBtn" class="btn btn-secondary">Exportieren</button>
-                    <input type="file" id="importFile" class="form-control mt-2" accept=".json">
-                    <button id="importBtn" class="btn btn-secondary mt-2">Importieren</button>
+                    <button id="exportBtn" class="btn btn-secondary me-2">Exportieren</button>
+                    <input type="file" id="importFile" class="form-control d-inline-block w-auto me-2" accept=".json">
+                    <button id="importBtn" class="btn btn-secondary">Importieren</button>
                     <table class="table table-striped mt-3" id="entriesTable">
                         <thead>
                             <tr>
@@ -111,13 +111,429 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <!-- Modals for editing -->
+    <div class="modal fade" id="editModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="settingsModalLabel">Einstellungen</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Eintrag bearbeiten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="editDatum">Datum</label>
+                                <input type="date" class="form-control" id="editDatum" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editSpedition">Spedition</label>
+                                <select class="form-control" id="editSpedition">
+                                    <option value="">Wählen...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="editLieferscheinnr">Lieferscheinnr</label>
+                                <input type="text" class="form-control" id="editLieferscheinnr" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="editErhalten">Erhalten</label>
+                                <input type="number" class="form-control" id="editErhalten" min="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="editAbgegeben">Abgegeben</label>
+                                <input type="number" class="form-control" id="editAbgegeben" min="0">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="editNotizen">Notizen</label>
+                                <textarea class="form-control" id="editNotizen"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editErfasser">Erfasser</label>
+                                <select class="form-control" id="editErfasser">
+                                    <option value="">Wählen...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" id="saveEditBtn">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let speditions = [];
+        let erfasser = [];
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/entries');
+                if (response.status === 401) {
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function loadSpeditions() {
+            try {
+                const response = await fetch('/api/speditions');
+                if (response.ok) {
+                    speditions = await response.json();
+                    console.log('Loaded speditions:', speditions);
+                    populateSelect('spedition', speditions);
+                    populateSelect('editSpedition', speditions);
+                } else if (response.status === 401) {
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Failed to load speditions');
+                }
+            } catch (error) {
+                console.error('Error loading speditions:', error);
+            }
+        }
+
+        async function loadErfasser() {
+            try {
+                const response = await fetch('/api/erfasser');
+                if (response.ok) {
+                    erfasser = await response.json();
+                    populateSelect('erfasser', erfasser);
+                    populateSelect('editErfasser', erfasser);
+                } else if (response.status === 401) {
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Failed to load erfasser');
+                }
+            } catch (error) {
+                console.error('Error loading erfasser:', error);
+            }
+        }
+
+        function populateSelect(selectId, data) {
+            const select = document.getElementById(selectId);
+            console.log('Populating select', selectId, 'with data:', data);
+            select.innerHTML = '<option value="">Wählen...</option>';
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = (selectId === 'erfasser' || selectId === 'editErfasser') ? item.name : item.id;
+                option.textContent = item.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadEntries() {
+            try {
+                const response = await fetch('/api/entries');
+                if (response.ok) {
+                    const entries = await response.json();
+                    displayEntries(entries);
+                    calculateStand(entries);
+                } else if (response.status === 401) {
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Failed to load entries');
+                }
+            } catch (error) {
+                console.error('Error loading entries:', error);
+            }
+        }
+
+        function displayEntries(entries) {
+            const tbody = document.querySelector('#entriesTable tbody');
+            tbody.innerHTML = '';
+            entries.forEach(entry => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${entry.id}</td>
+                    <td>${entry.datum}</td>
+                    <td>${entry.spedition_name || ''}</td>
+                    <td>${entry.lieferscheinnr || ''}</td>
+                    <td>${entry.erhalten || 0}</td>
+                    <td>${entry.abgegeben || 0}</td>
+                    <td>${entry.notizen || ''}</td>
+                    <td>${entry.erfasser || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning edit-btn" data-id="${entry.id}">Bearbeiten</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="${entry.id}">Löschen</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function calculateStand(entries) {
+            const stand = {};
+            entries.forEach(entry => {
+                const sped = entry.spedition_name;
+                if (!stand[sped]) stand[sped] = 0;
+                stand[sped] += (entry.erhalten || 0) - (entry.abgegeben || 0);
+            });
+            const tbody = document.querySelector('#standTable tbody');
+            tbody.innerHTML = '';
+            Object.keys(stand).forEach(sped => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${sped}</td><td>${stand[sped]}</td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        document.getElementById('entryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                datum: document.getElementById('datum').value,
+                spedition_id: document.getElementById('spedition').value,
+                lieferscheinnr: document.getElementById('lieferscheinnr').value,
+                erhalten: parseInt(document.getElementById('erhalten').value) || 0,
+                abgegeben: parseInt(document.getElementById('abgegeben').value) || 0,
+                notizen: document.getElementById('notizen').value,
+                erfasser: document.getElementById('erfasser').value
+            };
+            try {
+                const response = await fetch('/api/entries', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    loadEntries();
+                    e.target.reset();
+                } else if (response.status === 401) {
+                    window.location.href = '/login.html';
+                } else {
+                    console.error('Failed to save entry');
+                }
+            } catch (error) {
+                console.error('Error saving entry:', error);
+            }
+        });
+
+        document.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('edit-btn')) {
+                const id = e.target.dataset.id;
+                const response = await fetch(`/api/entries/${id}`);
+                if (response.ok) {
+                    const entry = await response.json();
+                    document.getElementById('editId').value = entry.id;
+                    document.getElementById('editDatum').value = entry.datum;
+                    document.getElementById('editSpedition').value = entry.spedition_id;
+                    document.getElementById('editLieferscheinnr').value = entry.lieferscheinnr;
+                    document.getElementById('editErhalten').value = entry.erhalten;
+                    document.getElementById('editAbgegeben').value = entry.abgegeben;
+                    document.getElementById('editNotizen').value = entry.notizen;
+                    document.getElementById('editErfasser').value = entry.erfasser;
+                    new bootstrap.Modal(document.getElementById('editModal')).show();
+                }
+            } else if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                if (confirm('Wirklich löschen?')) {
+                    const response = await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        loadEntries();
+                    }
+                }
+            }
+        });
+
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const id = document.getElementById('editId').value;
+            const data = {
+                datum: document.getElementById('editDatum').value,
+                spedition_id: document.getElementById('editSpedition').value,
+                lieferscheinnr: document.getElementById('editLieferscheinnr').value,
+                erhalten: parseInt(document.getElementById('editErhalten').value) || 0,
+                abgegeben: parseInt(document.getElementById('editAbgegeben').value) || 0,
+                notizen: document.getElementById('editNotizen').value,
+                erfasser: document.getElementById('editErfasser').value
+            };
+            const response = await fetch(`/api/entries/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                loadEntries();
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        // Settings functions
+        async function loadSpeditionsForSettings() {
+            try {
+                const response = await fetch('/api/speditions');
+                if (response.ok) {
+                    const speditions = await response.json();
+                    const list = document.getElementById('speditionsList');
+                    list.innerHTML = '';
+                    speditions.forEach(sped => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.textContent = sped.name;
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-danger btn-sm';
+                        btn.textContent = 'Löschen';
+                        btn.onclick = () => deleteSpedition(sped.id);
+                        li.appendChild(btn);
+                        list.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading speditions for settings:', error);
+            }
+        }
+
+        async function loadErfasserForSettings() {
+            try {
+                const response = await fetch('/api/erfasser');
+                if (response.ok) {
+                    const erfasser = await response.json();
+                    console.log('Loaded erfasser for settings:', erfasser);
+                    const list = document.getElementById('erfasserList');
+                    console.log('Erfasser list element:', list);
+                    list.innerHTML = '';
+                    erfasser.forEach(erf => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.textContent = erf.name;
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-danger btn-sm';
+                        btn.textContent = 'Löschen';
+                        btn.onclick = () => deleteErfasser(erf.id);
+                        li.appendChild(btn);
+                        list.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading erfasser for settings:', error);
+            }
+        }
+
+        async function deleteSpedition(id) {
+            if (confirm('Spedition wirklich löschen?')) {
+                const response = await fetch(`/api/speditions/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadSpeditions();
+                    loadSpeditionsForSettings();
+                }
+            }
+        }
+
+        async function deleteErfasser(id) {
+            if (confirm('Erfasser wirklich löschen?')) {
+                const response = await fetch(`/api/erfasser/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadErfasserForSettings();
+                }
+            }
+        }
+
+        // Event listeners
+        setTimeout(() => {
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                loadSpeditionsForSettings();
+                loadErfasserForSettings();
+            });
+
+            document.getElementById('speditionForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('newSpedition').value;
+                console.log('Adding spedition:', name);
+                const response = await fetch('/api/speditions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                console.log('Response status:', response.status);
+                if (response.ok) {
+                    console.log('Spedition added, reloading...');
+                    loadSpeditions();
+                    loadSpeditionsForSettings();
+                    e.target.reset();
+                }
+            });
+
+            document.getElementById('erfasserForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('newErfasser').value;
+                console.log('Adding erfasser:', name);
+                const response = await fetch('/api/erfasser', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                console.log('Erfasser POST response:', response.status);
+                if (response.ok) {
+                    console.log('Erfasser added, reloading...');
+                    loadErfasserForSettings();
+                    e.target.reset();
+                }
+            });
+
+            document.getElementById('exportBtn').addEventListener('click', async () => {
+                const response = await fetch('/api/export');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'palettenerfassung_export.json';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            });
+
+            document.getElementById('importBtn').addEventListener('click', async () => {
+                const fileInput = document.getElementById('importFile');
+                const file = fileInput.files[0];
+                if (file) {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const response = await fetch('/api/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (response.ok) {
+                        loadEntries();
+                        alert('Import erfolgreich');
+                    } else {
+                        alert('Import fehlgeschlagen');
+                    }
+                }
+            });
+        }, 0);
+
+        // Initialize
+        checkAuth();
+        loadSpeditions();
+        loadErfasser();
+        loadEntries();
+    </script>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Einstellungen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <h4>Speditionen verwalten</h4>
@@ -144,328 +560,5 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Check authentication
-        async function checkAuth() {
-            try {
-                const response = await fetch('/api/speditions');
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return false;
-                }
-                return true;
-            } catch {
-                window.location.href = '/login';
-                return false;
-            }
-        }
-
-        // Redirect to login if not authenticated
-        if (!checkAuth()) {
-            throw new Error('Not authenticated');
-        }
-
-        // API Base URL
-        const API_BASE = '';
-
-        // Load Speditions
-        async function loadSpeditions() {
-            try {
-                const response = await fetch(`${API_BASE}/api/speditions`);
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                const speditions = await response.json();
-                const select = document.getElementById('spedition');
-                select.innerHTML = '<option value="">Wählen...</option>';
-                const list = document.getElementById('speditionsList');
-                list.innerHTML = '';
-                speditions.forEach(spedition => {
-                    const option = document.createElement('option');
-                    option.value = spedition.name;
-                    option.textContent = spedition.name;
-                    select.appendChild(option);
-
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.textContent = spedition.name;
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-danger btn-sm';
-                    btn.type = 'button';
-                    btn.textContent = 'Löschen';
-                    btn.onclick = () => deleteSpedition(spedition.id);
-                    li.appendChild(btn);
-                    list.appendChild(li);
-                });
-                updatePalettenstand();
-            } catch (error) {
-                console.error('Error loading speditions:', error);
-            }
-        }
-
-        // Add Spedition
-        document.getElementById('speditionForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const name = document.getElementById('newSpedition').value.trim();
-            if (!name) return;
-            try {
-                const response = await fetch(`${API_BASE}/api/speditions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadSpeditions();
-                document.getElementById('newSpedition').value = '';
-            } catch (error) {
-                console.error('Error adding spedition:', error);
-            }
-        });
-
-        // Delete Spedition
-        async function deleteSpedition(id) {
-            try {
-                const response = await fetch(`${API_BASE}/api/speditions/${id}`, { method: 'DELETE' });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadSpeditions();
-            } catch (error) {
-                console.error('Error deleting spedition:', error);
-            }
-        }
-
-        // Load Erfasser
-        async function loadErfasser() {
-            try {
-                const response = await fetch(`${API_BASE}/api/erfasser`);
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                const erfasser = await response.json();
-                const select = document.getElementById('erfasser');
-                select.innerHTML = '<option value="">Wählen...</option>';
-                const list = document.getElementById('erfasserList');
-                list.innerHTML = '';
-                erfasser.forEach(e => {
-                    const option = document.createElement('option');
-                    option.value = e.name;
-                    option.textContent = e.name;
-                    select.appendChild(option);
-
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.textContent = e.name;
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-danger btn-sm';
-                    btn.type = 'button';
-                    btn.textContent = 'Löschen';
-                    btn.onclick = () => deleteErfasser(e.id);
-                    li.appendChild(btn);
-                    list.appendChild(li);
-                });
-            } catch (error) {
-                console.error('Error loading erfasser:', error);
-            }
-        }
-
-        // Add Erfasser
-        document.getElementById('erfasserForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const name = document.getElementById('newErfasser').value.trim();
-            if (!name) return;
-            try {
-                const response = await fetch(`${API_BASE}/api/erfasser`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadErfasser();
-                document.getElementById('newErfasser').value = '';
-            } catch (error) {
-                console.error('Error adding erfasser:', error);
-            }
-        });
-
-        // Delete Erfasser
-        async function deleteErfasser(id) {
-            try {
-                const response = await fetch(`${API_BASE}/api/erfasser/${id}`, { method: 'DELETE' });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadErfasser();
-            } catch (error) {
-                console.error('Error deleting erfasser:', error);
-            }
-        }
-
-        // Update Palettenstand
-        async function updatePalettenstand() {
-            try {
-                const response = await fetch(`${API_BASE}/api/palettenstand`);
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                const stands = await response.json();
-                const tbody = document.querySelector('#standTable tbody');
-                tbody.innerHTML = '';
-                stands.forEach(stand => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${stand.spedition}</td><td>${stand.stand}</td>`;
-                    tbody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error loading palettenstand:', error);
-            }
-        }
-
-        // Load Entries
-        async function loadEntries() {
-            try {
-                const response = await fetch(`${API_BASE}/api/entries`);
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                const entries = await response.json();
-                const tbody = document.querySelector('#entriesTable tbody');
-                tbody.innerHTML = '';
-                entries.forEach(entry => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${entry.id}</td>
-                        <td>${entry.datum}</td>
-                        <td>${entry.spedition}</td>
-                        <td>${entry.lieferscheinnr}</td>
-                        <td>${entry.erhalten}</td>
-                        <td>${entry.abgegeben}</td>
-                        <td>${entry.notizen}</td>
-                        <td>${entry.erfasser}</td>
-                        <td><button class="btn btn-danger btn-sm" onclick="deleteEntry(${entry.id})">Löschen</button></td>
-                    `;
-                    tbody.appendChild(row);
-                });
-                updatePalettenstand();
-            } catch (error) {
-                console.error('Error loading entries:', error);
-            }
-        }
-
-        // Save Entry
-        document.getElementById('entryForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const entry = {
-                datum: document.getElementById('datum').value,
-                spedition: document.getElementById('spedition').value,
-                lieferscheinnr: document.getElementById('lieferscheinnr').value,
-                erhalten: parseInt(document.getElementById('erhalten').value),
-                abgegeben: parseInt(document.getElementById('abgegeben').value),
-                notizen: document.getElementById('notizen').value,
-                erfasser: document.getElementById('erfasser').value
-            };
-            try {
-                const response = await fetch(`${API_BASE}/api/entries`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(entry)
-                });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadEntries();
-                document.getElementById('entryForm').reset();
-            } catch (error) {
-                console.error('Error saving entry:', error);
-            }
-        });
-
-        // Delete Entry
-        async function deleteEntry(id) {
-            try {
-                const response = await fetch(`${API_BASE}/api/entries/${id}`, { method: 'DELETE' });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                loadEntries();
-            } catch (error) {
-                console.error('Error deleting entry:', error);
-            }
-        }
-
-        // Export
-        document.getElementById('exportBtn').addEventListener('click', async function() {
-            try {
-                const response = await fetch(`${API_BASE}/api/entries`);
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                const data = await response.json();
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'palettenerfassung_export.json';
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch (error) {
-                console.error('Error exporting:', error);
-            }
-        });
-
-        // Import
-        document.getElementById('importBtn').addEventListener('click', function() {
-            const file = document.getElementById('importFile').files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        for (const entry of data) {
-                            const { id, ...entryWithoutId } = entry;
-                            const response = await fetch(`${API_BASE}/api/entries`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(entryWithoutId)
-                            });
-                            if (response.status === 401) {
-                                window.location.href = '/login';
-                                return;
-                            }
-                        }
-                        loadEntries();
-                        alert('Import erfolgreich!');
-                    } catch (error) {
-                        alert('Ungültige JSON-Datei.');
-                    }
-                };
-                reader.readAsText(file);
-            } else {
-                alert('Bitte wähle eine Datei aus.');
-            }
-        });
-
-        // Initialize
-        loadSpeditions();
-        loadErfasser();
-        loadEntries();
-    </script>
 </body>
 </html>
