@@ -14,18 +14,21 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
-  secret: 'secret-key',
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: true,
+  cookie: { 
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Auth Middleware
 function requireAuth(req, res, next) {
   if (req.session.authenticated) {
     next();
   } else {
-    res.redirect('/login');
+    res.status(401).json({ error: 'Unauthorized' });
   }
 }
 
@@ -73,19 +76,22 @@ app.post('/login', (req, res) => {
   const { password } = req.body;
   if (password === PASSWORD) {
     req.session.authenticated = true;
-    res.redirect('/');
+    res.json({ success: true });
   } else {
-    res.send('Falsches Passwort. <a href="/login">Zurück</a>');
+    res.status(401).json({ error: 'Falsches Passwort' });
   }
 });
+
+// Protect all API routes and app
+app.use(requireAuth);
 
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
 });
 
-// Protect API routes
-app.use('/api', requireAuth);
+// Serve static files for authenticated users
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/speditions', (req, res) => {
   db.all('SELECT * FROM speditions', [], (err, rows) => {

@@ -147,6 +147,26 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Check authentication
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/speditions');
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return false;
+                }
+                return true;
+            } catch {
+                window.location.href = '/login';
+                return false;
+            }
+        }
+
+        // Redirect to login if not authenticated
+        if (!checkAuth()) {
+            throw new Error('Not authenticated');
+        }
+
         // API Base URL
         const API_BASE = '';
 
@@ -154,6 +174,10 @@
         async function loadSpeditions() {
             try {
                 const response = await fetch(`${API_BASE}/api/speditions`);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const speditions = await response.json();
                 const select = document.getElementById('spedition');
                 select.innerHTML = '<option value="">Wählen...</option>';
@@ -170,6 +194,7 @@
                     li.textContent = spedition.name;
                     const btn = document.createElement('button');
                     btn.className = 'btn btn-danger btn-sm';
+                    btn.type = 'button';
                     btn.textContent = 'Löschen';
                     btn.onclick = () => deleteSpedition(spedition.id);
                     li.appendChild(btn);
@@ -187,11 +212,15 @@
             const name = document.getElementById('newSpedition').value.trim();
             if (!name) return;
             try {
-                await fetch(`${API_BASE}/api/speditions`, {
+                const response = await fetch(`${API_BASE}/api/speditions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name })
                 });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadSpeditions();
                 document.getElementById('newSpedition').value = '';
             } catch (error) {
@@ -202,7 +231,11 @@
         // Delete Spedition
         async function deleteSpedition(id) {
             try {
-                await fetch(`${API_BASE}/api/speditions/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_BASE}/api/speditions/${id}`, { method: 'DELETE' });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadSpeditions();
             } catch (error) {
                 console.error('Error deleting spedition:', error);
@@ -213,6 +246,10 @@
         async function loadErfasser() {
             try {
                 const response = await fetch(`${API_BASE}/api/erfasser`);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const erfasser = await response.json();
                 const select = document.getElementById('erfasser');
                 select.innerHTML = '<option value="">Wählen...</option>';
@@ -229,6 +266,7 @@
                     li.textContent = e.name;
                     const btn = document.createElement('button');
                     btn.className = 'btn btn-danger btn-sm';
+                    btn.type = 'button';
                     btn.textContent = 'Löschen';
                     btn.onclick = () => deleteErfasser(e.id);
                     li.appendChild(btn);
@@ -245,11 +283,15 @@
             const name = document.getElementById('newErfasser').value.trim();
             if (!name) return;
             try {
-                await fetch(`${API_BASE}/api/erfasser`, {
+                const response = await fetch(`${API_BASE}/api/erfasser`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name })
                 });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadErfasser();
                 document.getElementById('newErfasser').value = '';
             } catch (error) {
@@ -260,7 +302,11 @@
         // Delete Erfasser
         async function deleteErfasser(id) {
             try {
-                await fetch(`${API_BASE}/api/erfasser/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_BASE}/api/erfasser/${id}`, { method: 'DELETE' });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadErfasser();
             } catch (error) {
                 console.error('Error deleting erfasser:', error);
@@ -271,6 +317,10 @@
         async function updatePalettenstand() {
             try {
                 const response = await fetch(`${API_BASE}/api/palettenstand`);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const stands = await response.json();
                 const tbody = document.querySelector('#standTable tbody');
                 tbody.innerHTML = '';
@@ -288,6 +338,10 @@
         async function loadEntries() {
             try {
                 const response = await fetch(`${API_BASE}/api/entries`);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const entries = await response.json();
                 const tbody = document.querySelector('#entriesTable tbody');
                 tbody.innerHTML = '';
@@ -325,11 +379,15 @@
                 erfasser: document.getElementById('erfasser').value
             };
             try {
-                await fetch(`${API_BASE}/api/entries`, {
+                const response = await fetch(`${API_BASE}/api/entries`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entry)
                 });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadEntries();
                 document.getElementById('entryForm').reset();
             } catch (error) {
@@ -340,7 +398,11 @@
         // Delete Entry
         async function deleteEntry(id) {
             try {
-                await fetch(`${API_BASE}/api/entries/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_BASE}/api/entries/${id}`, { method: 'DELETE' });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 loadEntries();
             } catch (error) {
                 console.error('Error deleting entry:', error);
@@ -351,6 +413,10 @@
         document.getElementById('exportBtn').addEventListener('click', async function() {
             try {
                 const response = await fetch(`${API_BASE}/api/entries`);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const data = await response.json();
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -374,11 +440,15 @@
                         const data = JSON.parse(e.target.result);
                         for (const entry of data) {
                             const { id, ...entryWithoutId } = entry;
-                            await fetch(`${API_BASE}/api/entries`, {
+                            const response = await fetch(`${API_BASE}/api/entries`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(entryWithoutId)
                             });
+                            if (response.status === 401) {
+                                window.location.href = '/login';
+                                return;
+                            }
                         }
                         loadEntries();
                         alert('Import erfolgreich!');

@@ -13,13 +13,48 @@
 <body>
     <div class="login-container">
         <h2 class="text-center mb-4">Palettenerfassung Login</h2>
-        <form method="POST" action="/login">
+        <form id="loginForm">
             <div class="mb-3">
                 <label for="password" class="form-label">Passwort</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <input type="password" class="form-control" id="password" name="password" required autofocus>
             </div>
             <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+            <div id="error" class="alert alert-danger mt-3" style="display: none;"></div>
         </form>
     </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = 'Falsches Passwort!';
+                    errorDiv.style.display = 'block';
+                    document.getElementById('password').value = '';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Ein Fehler ist aufgetreten.';
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        // Check if already authenticated
+        fetch('/api/speditions')
+            .then(res => {
+                if (res.ok) window.location.href = '/';
+            })
+            .catch(() => {});
+    </script>
 </body>
 </html>
