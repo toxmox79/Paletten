@@ -122,20 +122,16 @@
         Synchronisierung wird vorbereitet ...
       </div>
 
-      <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-2">
+      <div class="d-flex align-items-end flex-wrap gap-2 mb-1">
+        <h3 class="mb-0 me-3">Aktueller Palettenstand</h3>
         <div>
-          <h3 class="mb-1">Palettenstand</h3>
-          <div class="text-muted small" id="standInfo">Aktueller Stand</div>
+          <label class="form-label mb-1" for="standDate">Datum</label>
+          <input type="date" id="standDate" class="form-control">
         </div>
-        <div class="d-flex align-items-end flex-wrap gap-2">
-          <div>
-            <label class="form-label mb-1" for="standDate">Stichtag</label>
-            <input type="date" id="standDate" class="form-control">
-          </div>
-          <button class="btn btn-secondary" id="showStandDate" type="button">Stand anzeigen</button>
-          <button class="btn btn-outline-secondary" id="resetStandDate" type="button">Aktuell</button>
-        </div>
+        <button class="btn btn-secondary" id="showStandDate" type="button">Berechnen</button>
+        <button class="btn btn-outline-secondary" id="resetStandDate" type="button">Aktuell</button>
       </div>
+      <div class="text-muted small mb-2" id="standInfo">Aktueller Stand</div>
       <table class="table table-striped" id="standTable">
         <thead>
           <tr>
