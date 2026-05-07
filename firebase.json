@@ -4,7 +4,13 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "database.db",
+      "Palettenerfassung.env",
+      "server.js",
+      "package.json",
+      "package-lock.json",
+      "README.md"
     ],
     "rewrites": [
       {
