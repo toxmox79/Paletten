@@ -1,4 +1,4 @@
-const CACHE_NAME = "paletten-pro-firebase-v6";
+const CACHE_NAME = "paletten-pro-firebase-v7";
 const FILES = [
   "./",
   "./index.html",
